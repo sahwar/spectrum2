@@ -80,36 +80,15 @@ class SwiftenPlugin : public NetworkPlugin, Swift::XMPPParserClient {
 		Swift::XMPPParser *m_xmppParser;
 		Swift::FullPayloadParserFactoryCollection m_collection2;
 
-		SwiftenPlugin(Config *config, Swift::SimpleEventLoop *loop, const std::string &host, int port) : NetworkPlugin() {
+		SwiftenPlugin(Config *config, const std::string &host, int port) : NetworkPlugin() {
 			this->config = config;
 			m_firstPing = true;
-			m_factories = new Swift::BoostNetworkFactories(loop);
-			m_conn = m_factories->getConnectionFactory()->createConnection();
-			m_conn->onDataRead.connect(boost::bind(&SwiftenPlugin::_handleDataRead, this, _1));
-			m_conn->connect(Swift::HostAddressPort(*(Swift::HostAddress::fromString(host)), port));
 			serializer = new Swift::XMPPSerializer(&collection, Swift::ClientStreamType, false);
 			m_xmppParser = new Swift::XMPPParser(this, &m_collection2, m_factories->getXMLParserFactory());
 			m_xmppParser->parse("<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' to='localhost' version='1.0'>");
 
 			LOG4CXX_INFO(logger, "Starting the plugin.");
-		}
-
-		// NetworkPlugin uses this method to send the data to networkplugin server
-		void sendData(const std::string &string) {
-			m_conn->write(Swift::createSafeByteArray(string));
-		}
-
-		// This method has to call handleDataRead with all received data from network plugin server
-		void _handleDataRead(std::shared_ptr<Swift::SafeByteArray> data) {
-			if (m_firstPing) {
-				m_firstPing = false;
-				NetworkPlugin::PluginConfig cfg;
-				cfg.setRawXML(true);
-				cfg.setNeedRegistration(false);
-				sendConfig(cfg);
-			}
-			std::string d(data->begin(), data->end());
-			handleDataRead(d);
+			connect(host, std::to_string(port));
 		}
 
 		void handleStreamStart(const Swift::ProtocolHeader&) {}
@@ -446,10 +425,7 @@ int main (int argc, char* argv[]) {
 
 	Logging::initBackendLogging(cfg);
 
-	Swift::SimpleEventLoop eventLoop;
-	loop_ = &eventLoop;
-	np = new SwiftenPlugin(cfg, &eventLoop, host, port);
-	loop_->run();
+	np = new SwiftenPlugin(cfg, host, port);
 
 	return 0;
 }

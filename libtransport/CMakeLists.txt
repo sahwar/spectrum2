@@ -42,12 +42,10 @@ endif(PROTOBUF_FOUND)
 	endif()
 # endif()
 
-find_package(CURL)
-
 if(WIN32)
-	target_link_libraries(transport transport-plugin ${PQXX_LIBRARIES} ${CURL_LIBRARIES} ${PQ_LIBRARY} ${MYSQL_LIBRARIES} ${SWIFTEN_LIBRARY} ${LOG4CXX_LIBRARIES} ${PROTOBUF_LIBRARY} JsonCpp::JsonCpp psapi.lib bcrypt.lib)
+	target_link_libraries(transport transport-plugin ${SWIFTEN_LIBRARY} ${LOG4CXX_LIBRARIES} ${PROTOBUF_LIBRARY} JsonCpp::JsonCpp psapi.lib bcrypt.lib)
 else()
-	target_link_libraries(transport transport-plugin ${PQXX_LIBRARIES} ${CURL_LIBRARIES} ${PQ_LIBRARY} ${SQLITE3_LIBRARIES} ${MYSQL_LIBRARIES} ${SWIFTEN_LIBRARY} ${LOG4CXX_LIBRARIES} ${POPT_LIBRARY} ${PROTOBUF_LIBRARY} JsonCpp::JsonCpp)
+	target_link_libraries(transport transport-plugin ${SWIFTEN_LIBRARY} ${LOG4CXX_LIBRARIES} ${POPT_LIBRARY} ${PROTOBUF_LIBRARY} JsonCpp::JsonCpp)
 endif()
 
 set_target_properties(transport PROPERTIES

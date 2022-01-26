@@ -1,10 +1,6 @@
 file(GLOB SRC *.cpp *.h)
 file(GLOB HEADERS ../include/transport/*.h)
 
-set(EXTRA_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/../../libtransport/MemoryUsage.cpp)
-set(EXTRA_SOURCES ${EXTRA_SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/../../libtransport/Logging.cpp)
-set(EXTRA_SOURCES ${EXTRA_SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/../../libtransport/Config.cpp)
-set(EXTRA_SOURCES ${EXTRA_SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/../../libtransport/Util.cpp)
 set(EXTRA_SOURCES ${EXTRA_SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/../../include/transport/protocol.pb.cc)
 
 if(NOT WIN32)
@@ -22,10 +18,12 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 	endif()
 endif()
 
+find_package(CURL)
+
 if(NOT WIN32)
-	target_link_libraries(transport-plugin ${PROTOBUF_LIBRARY} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES})
+	target_link_libraries(transport-plugin ${PROTOBUF_LIBRARY} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES} ${PQXX_LIBRARIES} ${CURL_LIBRARIES} ${PQ_LIBRARY} ${SQLITE3_LIBRARIES} ${MYSQL_LIBRARIES})
 else()
-	target_link_libraries(transport-plugin ${PROTOBUF_LIBRARY} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES} ws2_32.lib)
+	target_link_libraries(transport-plugin ${PROTOBUF_LIBRARY} ${LOG4CXX_LIBRARIES} ${Boost_LIBRARIES} ${PQXX_LIBRARIES} ${CURL_LIBRARIES} ${PQ_LIBRARY} ${SQLITE3_LIBRARIES} ${MYSQL_LIBRARIES} ws2_32.lib)
 endif() 
 
 set_target_properties(transport-plugin PROPERTIES

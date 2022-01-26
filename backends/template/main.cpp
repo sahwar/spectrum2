@@ -5,9 +5,6 @@
 #include "transport/NetworkPlugin.h"
 #include "transport/Logging.h"
 
-// Swiften
-#include "Swiften/Swiften.h"
-
 #ifndef _WIN32
 // for signal handler
 #include "unistd.h"
@@ -17,6 +14,7 @@
 #endif
 // Boost
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 using namespace boost::filesystem;
 using namespace boost::program_options;
 using namespace Transport;
@@ -60,9 +58,7 @@ int main (int argc, char* argv[]) {
 
 	Logging::initBackendLogging(cfg);
 
-	Swift::SimpleEventLoop eventLoop;
-	Plugin p(cfg, &eventLoop, host, port);
-	eventLoop.run();
+	Plugin p(cfg, host, port);
 
 	return 0;
 }

@@ -24,14 +24,9 @@
 
 #include <sstream>
 
-#ifndef WIN32
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <unistd.h>
-#else 
-#include <winsock2.h>
-#include <stdint.h>
-#include <process.h>
+#include <boost/asio.hpp>
+
+#ifdef _WIN32
 #define getpid _getpid
 #endif
 
@@ -50,7 +45,7 @@ template <class T> std::string stringOf(T object) {
 	return (os.str());
 }
 
-NetworkPlugin::NetworkPlugin() {
+NetworkPlugin::NetworkPlugin() : stream() {
 	m_pingReceived = false;
 
 	double shared;
@@ -60,6 +55,12 @@ NetworkPlugin::NetworkPlugin() {
 }
 
 NetworkPlugin::~NetworkPlugin() {
+}
+
+void NetworkPlugin::connect(const std::string& host, const std::string &port) {
+	stream.expires_after(boost::asio::chrono::seconds(60));
+	stream.connect(host, port);
+	handleDataRead(stream);
 }
 
 void NetworkPlugin::sendConfig(const PluginConfig &cfg) {
@@ -576,30 +577,11 @@ void NetworkPlugin::handleChatStatePayload(const std::string &data, int type) {
 	}
 }
 
-void NetworkPlugin::handleDataRead(std::string &data) {
-	m_data.insert(m_data.end(), data.begin(), data.end());
-
-	while (m_data.size() != 0) {
-		unsigned int expected_size;
-
-		if (m_data.size() >= 4) {
-			expected_size = *((unsigned int*) &m_data[0]);
-			expected_size = ntohl(expected_size);
-			if (m_data.size() - 4 < expected_size)
-				return;
-		}
-		else {
-			return;
-		}
-
+void NetworkPlugin::handleDataRead(std::istream& data) {
+	while (true) {
 		pbnetwork::WrapperMessage wrapper;
-		if (wrapper.ParseFromArray(&m_data[4], expected_size) == false) {
-			m_data.erase(m_data.begin(), m_data.begin() + 4 + expected_size);
-			return;
-		}
-		m_data.erase(m_data.begin(), m_data.begin() + 4 + expected_size);
-
-		switch(wrapper.type()) {
+		if (wrapper.ParseFromIstream(&data)) {
+			switch (wrapper.type()) {
 			case pbnetwork::WrapperMessage_Type_TYPE_LOGIN:
 				handleLoginPayload(wrapper.payload());
 				break;
@@ -665,6 +647,10 @@ void NetworkPlugin::handleDataRead(std::string &data) {
 				break;
 			default:
 				return;
+			}
+		} else {
+			LOG4CXX_ERROR(logger, "Error reading from server");
+			break;
 		}
 	}
 }
@@ -673,6 +659,11 @@ void NetworkPlugin::send(const std::string &data) {
 	uint32_t size = htonl(data.size());
 	char *header = (char *) &size;
 	sendData(std::string(header, 4) + data);
+}
+
+void NetworkPlugin::sendData(const std::string& data) {
+	stream << data;
+	stream.flush();
 }
 
 void NetworkPlugin::checkPing() {

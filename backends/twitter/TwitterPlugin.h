@@ -7,9 +7,7 @@
 #include "transport/MySQLBackend.h"
 #include "transport/PQXXBackend.h"
 #include "transport/StorageBackend.h"
-#include "transport/ThreadPool.h"
 
-#include <Swiften/Swiften.h>
 #ifndef _WIN32
 #include "unistd.h"
 #include "signal.h"
@@ -17,6 +15,7 @@
 #include "sys/signal.h"
 #endif
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 
@@ -30,8 +29,7 @@
 #include <queue>
 #include <set>
 #include <cstdio>
-#include <Swiften/Crypto/CryptoProvider.h>
-#include <Swiften/Crypto/PlatformCryptoProvider.h>
+
 using namespace boost::filesystem;
 using namespace boost::program_options;
 using namespace Transport;
@@ -40,27 +38,20 @@ using namespace Transport;
 
 class TwitterPlugin;
 extern TwitterPlugin *np;
-extern Swift::SimpleEventLoop *loop_; // Event Loop
 
 
 class TwitterPlugin : public NetworkPlugin {
 	public:
-		Swift::BoostNetworkFactories *m_factories;
-		Swift::BoostIOServiceThread m_boostIOServiceThread;
-		std::shared_ptr<Swift::Connection> m_conn;
-		std::shared_ptr<Swift::CryptoProvider> cryptoProvider;
-		Swift::Timer::ref tweet_timer;
-		Swift::Timer::ref message_timer;
+		std::unique_ptr<boost::asio::deadline_timer> tweet_timer;
+		std::unique_ptr<boost::asio::deadline_timer> message_timer;
+		std::unique_ptr<boost::asio::io_service> io;
 		StorageBackend *storagebackend;
 
-		TwitterPlugin(Config *config, Swift::SimpleEventLoop *loop, StorageBackend *storagebackend, const std::string &host, int port);
+		TwitterPlugin(Config *config, StorageBackend *storagebackend, const std::string &host, int port);
 		~TwitterPlugin();
 
 		// Send data to NetworkPlugin server
 		void sendData(const std::string &string);
-
-		// Receive date from the NetworkPlugin server and invoke the appropirate payload handler (implement in the NetworkPlugin class)
-		void _handleDataRead(std::shared_ptr<Swift::SafeByteArray> data);
 	
 		// User trying to login into his twitter account
 		void handleLoginRequest(const std::string &user, const std::string &legacyName, const std::string &password);
@@ -153,7 +144,6 @@ class TwitterPlugin : public NetworkPlugin {
 
 		boost::mutex dblock, userlock;
 
-		ThreadPool *tp;
 		std::set<std::string> onlineUsers;
 		struct UserData
 		{

@@ -51,11 +51,7 @@ int main (int argc, char* argv[]) {
 		LOG4CXX_ERROR(logger, "Can't connect to database!");
 		return -1;
 	}
-
-	Swift::SimpleEventLoop eventLoop;
-	loop_ = &eventLoop;
-	np = new TwitterPlugin(cfg, &eventLoop, storagebackend, host, port);
-	loop_->run();
+	np = new TwitterPlugin(cfg, storagebackend, host, port);
 
 	return 0;
 }

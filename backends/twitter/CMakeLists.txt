@@ -8,7 +8,7 @@ find_package(CURL)
 
 if(CURL_FOUND)
 	message(STATUS "Using curl ${CURL_VERSION_STRING}: ${CURL_INCLUDE_DIRS} ${CURL_LIBRARIES}")
-	target_link_libraries(spectrum2_twitter_backend transport JsonCpp::JsonCpp ${CURL_LIBRARIES} ${Boost_LIBRARIES} ${SWIFTEN_LIBRARY} ${LOG4CXX_LIBRARIES})
+	target_link_libraries(spectrum2_twitter_backend transport-plugin JsonCpp::JsonCpp ${CURL_LIBRARIES} ${Boost_LIBRARIES} ${SWIFTEN_LIBRARY} ${LOG4CXX_LIBRARIES})
 else()
 	message(FATAL_ERROR "curl not found")
 endif()

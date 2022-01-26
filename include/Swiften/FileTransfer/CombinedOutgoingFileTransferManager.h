@@ -17,6 +17,7 @@
 
 namespace Swift {
 
+class DiscoInfo;
 class JingleSessionManager;
 class IQRouter;
 class EntityCapsProvider;

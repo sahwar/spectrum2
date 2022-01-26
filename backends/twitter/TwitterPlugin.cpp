@@ -10,12 +10,10 @@
 #include "Requests/DestroyFriendRequest.h"
 #include "Requests/RetweetRequest.h"
 #include "Requests/ProfileImageRequest.h"
-#include "Swiften/StringCodecs/Hexify.h"
 
 DEFINE_LOGGER(logger, "Twitter Backend");
 
 TwitterPlugin *np = NULL;
-Swift::SimpleEventLoop *loop_; // Event Loop
 
 const std::string OLD_APP_KEY = "PCWAdQpyyR12ezp2fVwEhw";
 const std::string OLD_APP_SECRET = "EveLmCXJIg2R7BTCpm6OWV8YyX49nI0pxnYXh7JMvDg";
@@ -35,7 +33,7 @@ static int cmp(std::string a, std::string b)
 }
 
 
-TwitterPlugin::TwitterPlugin(Config *config, Swift::SimpleEventLoop *loop, StorageBackend *storagebackend, const std::string &host, int port) : NetworkPlugin()
+TwitterPlugin::TwitterPlugin(Config *config, StorageBackend *storagebackend, const std::string &host, int port) : NetworkPlugin()
 {
 	this->config = config;
 	this->storagebackend = storagebackend;
@@ -68,26 +66,17 @@ TwitterPlugin::TwitterPlugin(Config *config, Swift::SimpleEventLoop *loop, Stora
 	OAUTH_SECRET = "twitter_oauth_secret";
 	MODE = "mode";
 
-	m_factories = new Swift::BoostNetworkFactories(loop);
-	m_conn = m_factories->getConnectionFactory()->createConnection();
-	m_conn->onDataRead.connect(boost::bind(&TwitterPlugin::_handleDataRead, this, _1));
-	m_conn->connect(Swift::HostAddressPort(*(Swift::HostAddress::fromString(host)), port));
-
-	tp = new ThreadPool(loop_, 10);
-
 	LOG4CXX_INFO(logger, "Fetch timeout is set to " << CONFIG_INT_DEFAULTED(config, "twitter.fetch_timeout", 90000));
-	tweet_timer = m_factories->getTimerFactory()->createTimer(CONFIG_INT_DEFAULTED(config, "twitter.fetch_timeout", 90000));
-	message_timer = m_factories->getTimerFactory()->createTimer(CONFIG_INT_DEFAULTED(config, "twitter.fetch_timeout", 90000));
+	io = std::make_unique<boost::asio::io_service>();
+	tweet_timer = std::make_unique<boost::asio::deadline_timer>(io, boost::posix_time::seconds(CONFIG_INT_DEFAULTED(config, "twitter.fetch_timeout", 90000)));
+	message_timer = std::make_unique<boost::asio::deadline_timer>(io, boost::posix_time::seconds(CONFIG_INT_DEFAULTED(config, "twitter.fetch_timeout", 90000)));
 
-	tweet_timer->onTick.connect(boost::bind(&TwitterPlugin::pollForTweets, this));
-	//message_timer->onTick.connect(boost::bind(&TwitterPlugin::pollForDirectMessages, this));
-
-	tweet_timer->start();
-	message_timer->start();
-    cryptoProvider = std::shared_ptr<Swift::CryptoProvider>(Swift::PlatformCryptoProvider::create());
+	tweet_timer->async_wait(boost::bind(&TwitterPlugin::pollForTweets, this));
+	//message_timer->async_wait(boost::bind(&TwitterPlugin::pollForDirectMessages, this));
 
 
 	LOG4CXX_INFO(logger, "Starting the plugin.");
+	connect(host, std::to_string(port));
 }
 
 TwitterPlugin::~TwitterPlugin()
@@ -95,29 +84,6 @@ TwitterPlugin::~TwitterPlugin()
 	delete storagebackend;
 	std::set<std::string>::iterator it;
 	for (it = onlineUsers.begin() ; it != onlineUsers.end() ; it++) delete userdb[*it].sessions;
-	delete tp;
-}
-
-// Send data to NetworkPlugin server
-void TwitterPlugin::sendData(const std::string &string)
-{
-	m_conn->write(Swift::createSafeByteArray(string));
-}
-
-// Receive date from the NetworkPlugin server and invoke the appropirate payload handler (implement in the NetworkPlugin class)
-void TwitterPlugin::_handleDataRead(std::shared_ptr<Swift::SafeByteArray> data)
-{
-	if (m_firstPing) {
-		m_firstPing = false;
-		// Users can join the network without registering if we allow
-		// one user to connect multiple IRC networks.
-		NetworkPlugin::PluginConfig cfg;
-		cfg.setNeedPassword(false);
-		sendConfig(cfg);
-	}
-
-	std::string d(data->begin(), data->end());
-	handleDataRead(d);
 }
 
 // User trying to login into his twitter account

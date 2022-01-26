@@ -27,6 +27,8 @@
 #include <iostream>
 #include <list>
 
+#include <boost/asio.hpp>
+
 namespace Transport {
 
 /// Represents Spectrum2 legacy network plugin.
@@ -50,7 +52,6 @@ class NetworkPlugin {
 				void setExtraFields(const std::vector<std::string> &fields) { m_extraFields = fields; }
 				void setRawXML(bool rawXML = false) { m_rawXML = rawXML; }
 				void disableJIDEscaping() { m_disableJIDEscaping = true; }
-
 			private:
 				bool m_needPassword;
 				bool m_needRegistration;
@@ -62,14 +63,16 @@ class NetworkPlugin {
 				friend class NetworkPlugin;
 		};
 
-		/// Creates new NetworkPlugin and connects the Spectrum2 NetworkPluginServer.
-		/// \param loop Event loop.
-		/// \param host Host where Spectrum2 NetworkPluginServer runs.
-		/// \param port Port.
+		/// Creates new NetworkPlugin 
 		NetworkPlugin();
 
 		/// Destructor.
 		virtual ~NetworkPlugin();
+
+		/// Connects the Spectrum2 NetworkPluginServer.
+		/// \param host Host where Spectrum2 NetworkPluginServer runs.
+		/// \param port Port ("http" or "8080")
+		void connect(const std::string &host, const std::string &port);
 
 		void sendConfig(const PluginConfig &cfg);
 
@@ -273,8 +276,8 @@ class NetworkPlugin {
 		virtual void handleMemoryUsage(double &res, double &shared) {res = 0; shared = 0;}
 
 		virtual void handleExitRequest() { exit(1); }
-		void handleDataRead(std::string &data);
-		virtual void sendData(const std::string &string) {}
+		void handleDataRead(std::istream &data);
+		void sendData(const std::string& string);
 
 		void checkPing();
 
@@ -303,7 +306,7 @@ class NetworkPlugin {
 		std::string m_data;
 		bool m_pingReceived;
 		double m_init_res;
-
+		boost::asio::ip::tcp::iostream stream;
 };
 
 }
